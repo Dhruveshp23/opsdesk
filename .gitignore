@@ -1,4 +1,4 @@
-# Logs
+git checkout -b feature/dockerize# Logs
 logs
 *.log
 npm-debug.log*
