@@ -10,13 +10,13 @@ pipeline {
 
         stage('Install dependencies') {
             steps {
-                sh 'npm install'
+                bat 'npm install'
             }
         }
 
         stage('Build Docker image') {
             steps {
-                sh 'docker build -t opsdesk-app .'
+                bat 'docker build -t opsdesk-app .'
             }
         }
     }
