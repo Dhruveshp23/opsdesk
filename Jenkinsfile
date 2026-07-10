@@ -3,6 +3,9 @@ pipeline {
 
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
+        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+        AWS_DEFAULT_REGION = 'us-east-1'
         IMAGE_NAME = 'dhruveshp23/opsdesk'
     }
 
@@ -29,6 +32,25 @@ pipeline {
             steps {
                 bat 'docker login -u %DOCKERHUB_CREDENTIALS_USR% -p %DOCKERHUB_CREDENTIALS_PSW%'
                 bat "docker push %IMAGE_NAME%:latest"
+            }
+        }
+
+        stage('Get EC2 IP') {
+            steps {
+                script {
+                    env.EC2_IP = bat(
+                        script: '@aws ec2 describe-instances --filters "Name=tag:Name,Values=opsdesk-server" "Name=instance-state-name,Values=running" --query "Reservations[0].Instances[0].PublicIpAddress" --output text',
+                        returnStdout: true
+                    ).trim()
+                }
+            }
+        }
+
+        stage('Deploy to EC2') {
+            steps {
+                sshagent(['ec2-ssh-key']) {
+                    bat "ssh -o StrictHostKeyChecking=no ec2-user@%EC2_IP% \"docker pull %IMAGE_NAME%:latest && docker stop opsdesk-app || echo no-op && docker rm opsdesk-app || echo no-op && docker run -d -p 3000:3000 --name opsdesk-app %IMAGE_NAME%:latest\""
+                }
             }
         }
     }
