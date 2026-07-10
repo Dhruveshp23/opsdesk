@@ -48,8 +48,9 @@ pipeline {
 
         stage('Deploy to EC2') {
             steps {
-                sshagent(['ec2-ssh-key']) {
-                    bat "ssh -o StrictHostKeyChecking=no ec2-user@%EC2_IP% \"docker pull %IMAGE_NAME%:latest && docker stop opsdesk-app || echo no-op && docker rm opsdesk-app || echo no-op && docker run -d -p 3000:3000 --name opsdesk-app %IMAGE_NAME%:latest\""
+                withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) 
+                {
+                    bat "ssh -o StrictHostKeyChecking=no -i %SSH_KEY% %SSH_USER%@%EC2_IP% \"docker pull %IMAGE_NAME%:latest && docker stop opsdesk-app || echo no-op && docker rm opsdesk-app || echo no-op && docker run -d -p 3000:3000 --name opsdesk-app %IMAGE_NAME%:latest\""
                 }
             }
         }
