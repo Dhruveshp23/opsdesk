@@ -52,7 +52,7 @@ pipeline {
                 bat '''
                 icacls "%SSH_KEY%" /inheritance:r
                 icacls "%SSH_KEY%" /grant:r "NT AUTHORITY\\SYSTEM:R"
-                ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %SSH_USER%@%EC2_IP% "docker pull %IMAGE_NAME%:latest && docker stop opsdesk-app || echo no-op && docker rm opsdesk-app || echo no-op && docker run -d -p 3000:3000 --name opsdesk-app %IMAGE_NAME%:latest"
+                ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %SSH_USER%@%EC2_IP% "docker pull %IMAGE_NAME%:latest && docker stop opsdesk-app || echo no-op && docker rm opsdesk-app || echo no-op && docker run -d --restart unless-stopped -p 3000:3000 --env-file /home/ec2-user/.env --name opsdesk-app %IMAGE_NAME%:latest"
                 '''
                 }
             }
