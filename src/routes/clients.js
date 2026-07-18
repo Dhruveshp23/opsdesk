@@ -2,8 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const pool = require('../config/db');
-const { sendWelcomeEmail } = require('../services/email');
-const { uploadDocument } = require('../services/s3');
+const { onboardingQueue } = require('../services/queue');
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -15,29 +14,30 @@ router.post('/onboard', upload.single('document'), async (req, res) => {
     }
 
     try {
-        let documentKey = null;
-
-        if (req.file) {
-            try {
-                documentKey = await uploadDocument(req.file.buffer, req.file.originalname, req.file.mimetype);
-            } catch (uploadErr) {
-                console.error('Document upload failed:', uploadErr);
-            }
-        }
-
         const result = await pool.query(
-            'INSERT INTO clients (company_name, contact_name, contact_email, document_key) VALUES ($1, $2, $3, $4) RETURNING *',
-            [company_name, contact_name, contact_email, documentKey]
+            'INSERT INTO clients (company_name, contact_name, contact_email) VALUES ($1, $2, $3) RETURNING *',
+            [company_name, contact_name, contact_email]
         );
 
-        try {
-            await sendWelcomeEmail(contact_email, contact_name, company_name);
-            console.log('Welcome email sent successfully to', contact_email);
-        } catch (emailErr) {
-            console.error('Client created but welcome email failed:', emailErr);
+        const client = result.rows[0];
+
+        await onboardingQueue.add('send-welcome-email', {
+            clientId: client.id,
+            contactEmail: contact_email,
+            contactName: contact_name,
+            companyName: company_name,
+        });
+
+        if (req.file) {
+            await onboardingQueue.add('upload-document', {
+                clientId: client.id,
+                fileBuffer: req.file.buffer.toString('base64'),
+                originalFileName: req.file.originalname,
+                mimeType: req.file.mimetype,
+            });
         }
 
-        res.status(201).json({ status: 'ok', client: result.rows[0] });
+        res.status(201).json({ status: 'ok', client });
     } catch (err) {
         console.error('Error creating client:', err);
         res.status(500).json({ error: 'Failed to onboard client' });

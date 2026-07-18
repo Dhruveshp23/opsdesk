@@ -50,10 +50,10 @@ pipeline {
             steps {
                 withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
                     bat '''
-                        icacls "%SSH_KEY%" /inheritance:r
-                        icacls "%SSH_KEY%" /grant:r "NT AUTHORITY\\SYSTEM:R"
-                        ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %SSH_USER%@%EC2_IP% "docker pull %IMAGE_NAME%:latest && docker stop opsdesk-app || echo no-op && docker rm opsdesk-app || echo no-op && docker run -d --restart unless-stopped -p 3000:3000 --env-file /home/ec2-user/.env --name opsdesk-app %IMAGE_NAME%:latest"
-                    '''
+                    icacls "%SSH_KEY%" /inheritance:r
+                    icacls "%SSH_KEY%" /grant:r "NT AUTHORITY\\SYSTEM:R"
+                    ssh -o StrictHostKeyChecking=no -i "%SSH_KEY%" %SSH_USER%@%EC2_IP% "docker pull %IMAGE_NAME%:latest && docker stop opsdesk-app || echo no-op && docker rm opsdesk-app || echo no-op && docker run -d --restart unless-stopped --network opsdesk-net -p 3000:3000 --env-file /home/ec2-user/.env --name opsdesk-app %IMAGE_NAME%:latest && docker stop opsdesk-worker || echo no-op && docker rm opsdesk-worker || echo no-op && docker run -d --restart unless-stopped --network opsdesk-net --env-file /home/ec2-user/.env --name opsdesk-worker %IMAGE_NAME%:latest node src/worker.js"
+                '''
                 }
             }
         }
