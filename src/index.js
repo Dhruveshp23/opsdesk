@@ -4,6 +4,7 @@ const clientsRouter = require('./routes/clients');
 
 const app = express();
 app.use(express.json());
+app.use(express.static('public'));
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'OpsDesk API is running' });
